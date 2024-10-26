@@ -68,14 +68,25 @@ Key parameters in `walking_controller_fixed.py`:
 - `STEP_HEIGHT = 0.05`: Walking step height in meters
 - `STEP_LENGTH = 0.1`: Walking step length in meters
 
+Force Control Parameters:
+- `KP = 0.3`: Proportional gain for force control
+- `KI = 0.1`: Integral gain for force control
+- `KD = 0.05`: Derivative gain for force control
+- `MAX_FORCE = 500.0`: Maximum allowable force in Newtons
+- `MIN_TOTAL_FORCE = 180.0`: Minimum required ground force
+- `FORCE_ERROR_LIMIT = 50.0`: Maximum allowed force error
+
 ## Project Structure
 ```
-robotics_workspace/
+RoboWalk/
 ├── src/
-│   ├── models/                    # Robot URDF models
-│   │   └── simple_biped_stable.urdf
+│   ├── models/                    # Robot URDF models and controllers
+│   │   ├── simple_biped_stable.urdf  # Optimized robot model
+│   │   ├── constants.py          # System constants and parameters
+│   │   └── urdf_walker.py        # URDF model controller
 │   ├── walking_controller_fixed.py # Main walking controller
 │   ├── test_walking_controller.py # Testing script
+│   ├── force_analysis.py         # Force distribution analysis
 │   └── debug_contact.py          # Debug utilities
 └── docs/
     ├── deployment/               # Deployment guides
@@ -137,7 +148,26 @@ python -m pytest src/tests/
 Follow PEP 8 guidelines and use type hints.
 
 ## Contributing
-Please read our contributing guidelines before submitting pull requests.
+To contribute to this project:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following these guidelines:
+   - Follow PEP 8 style guide
+   - Add type hints to all functions
+   - Maintain test coverage above 90%
+   - Update documentation for any new features
+   - Ensure force metrics meet minimum requirements:
+     * Force ratio > 0.75
+     * Total ground force > 180N
+     * Pitch deviation < 0.1°
+4. Run the test suite and verify all tests pass
+5. Update relevant documentation
+6. Submit a pull request with:
+   - Clear description of changes
+   - Performance metrics
+   - Test results
+   - Documentation updates
 
 ## License
 MIT License
