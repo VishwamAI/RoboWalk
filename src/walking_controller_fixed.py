@@ -9,6 +9,12 @@ class WalkingController:
         self.analyzer = force_analyzer
         self.robot_id = force_analyzer.robot_id
 
+        # Enable GUI visualization
+        self.use_gui = True
+        if self.use_gui:
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+
         # Walking parameters
         self.step_height = 0.008  # Maximum foot lift height
         self.step_length = 0.02   # Forward step size
