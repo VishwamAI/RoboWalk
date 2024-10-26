@@ -682,24 +682,15 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Bipedal Robot Walking Controller')
     parser.add_argument('--gui', action='store_true', help='Enable GUI visualization')
+    parser.add_argument('--timeout', type=float, default=30.0, help='Simulation timeout in seconds')
     args = parser.parse_args()
 
-    # Initialize PyBullet
-    if args.gui:
-        p.connect(p.GUI)
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-    else:
-        p.connect(p.DIRECT)
-
-    # Set up simulation environment
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    p.setGravity(0, 0, -9.81)
-    p.setRealTimeSimulation(0)
+    # Initialize force analyzer with appropriate connection mode
+    connection_mode = p.GUI if args.gui else p.DIRECT
+    analyzer = ForceAnalyzer(connection_mode=connection_mode)
 
     try:
-        # Initialize force analyzer and walking controller
-        analyzer = ForceAnalyzer(connection_mode=p.GUI if args.gui else p.DIRECT)
+        # Create walking controller
         controller = WalkingController(analyzer)
 
         # Print initial force analysis
@@ -713,11 +704,16 @@ if __name__ == "__main__":
         print(f"Total force: {total_force:.2f}N")
         print(f"Force ratio: {force_ratio:.3f}")
 
-        # Start walking sequence
-        controller.start_walking()
+        # Start walking sequence with timeout
+        start_time = time.time()
+        while time.time() - start_time < args.timeout:
+            controller.start_walking()
+            if args.gui:
+                time.sleep(1.0/240.0)  # Match simulation timestep for visualization
 
     except KeyboardInterrupt:
         print("\nStopping simulation gracefully...")
     finally:
-        p.disconnect()
+        if p.isConnected():
+            p.disconnect()
         print("Simulation ended.")
