@@ -49,9 +49,32 @@ python src/test_walking_controller.py
 ```
 
 ### Force Analysis
-Test force distribution and stability:
+Test force distribution and stability in GUI or DIRECT mode:
 ```bash
-python src/force_test.py
+python src/force_test.py --gui  # For GUI visualization
+python src/force_test.py       # For DIRECT mode (headless)
+```
+
+Example force analysis output:
+```
+Total normal force: 9.794N
+Total force vector: [0.000, 0.000, 9.794]N
+Force vector magnitude: 9.794N
+Expected force (mass * g): 9.810N
+```
+
+Contact point details:
+```
+Contact point 1 details:
+Position on box: [-0.100, -0.100, -0.000]
+Position on ground: [-0.100, -0.100, 0.000]
+Contact distance: -0.000110
+```
+
+### PyBullet Initialization
+When starting the simulation, PyBullet displays its build information:
+```
+pybullet build time: Nov 28 2023 23:45:17
 ```
 
 ### Inverse Kinematics Testing
