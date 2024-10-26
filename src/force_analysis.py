@@ -270,6 +270,10 @@ class ForceAnalyzer:
 
         return True
 
+    @property
+    def connection_mode(self):
+        return p.getConnectionInfo(self.client)['connectionMethod']
+
 if __name__ == "__main__":
-    analyzer = ForceAnalyzer()
+    analyzer = ForceAnalyzer(connection_mode=p.DIRECT)
     print("Force Analyzer initialized successfully!")

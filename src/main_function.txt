@@ -1,0 +1,43 @@
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Bipedal Robot Walking Controller')
+    parser.add_argument('--gui', action='store_true', help='Enable GUI visualization')
+    args = parser.parse_args()
+
+    # Initialize PyBullet
+    if args.gui:
+        p.connect(p.GUI)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+    else:
+        p.connect(p.DIRECT)
+
+    # Set up simulation environment
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
+    p.setGravity(0, 0, -9.81)
+    p.setRealTimeSimulation(0)
+
+    try:
+        # Initialize force analyzer and walking controller
+        analyzer = ForceAnalyzer(connection_mode=p.GUI if args.gui else p.DIRECT)
+        controller = WalkingController(analyzer)
+
+        # Print initial force analysis
+        left_force, right_force = analyzer.get_contact_forces()
+        total_force = left_force[2] + right_force[2]
+        force_ratio = min(left_force[2], right_force[2]) / (total_force + 1e-6)
+
+        print("\nInitial Force Analysis:")
+        print(f"Left foot force: {left_force[2]:.2f}N")
+        print(f"Right foot force: {right_force[2]:.2f}N")
+        print(f"Total force: {total_force:.2f}N")
+        print(f"Force ratio: {force_ratio:.3f}")
+
+        # Start walking sequence
+        controller.start_walking()
+
+    except KeyboardInterrupt:
+        print("\nStopping simulation gracefully...")
+    finally:
+        if args.gui:
+            p.disconnect()
+        print("Simulation ended.")

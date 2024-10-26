@@ -1,6 +1,8 @@
 import numpy as np
 import pybullet as p
+import pybullet_data
 import time
+import argparse
 from force_analysis import ForceAnalyzer
 from scipy.spatial.transform import Rotation
 
@@ -10,7 +12,7 @@ class WalkingController:
         self.robot_id = force_analyzer.robot_id
 
         # Enable GUI visualization
-        self.use_gui = True
+        self.use_gui = force_analyzer.connection_mode == p.GUI
         if self.use_gui:
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
@@ -59,7 +61,6 @@ class WalkingController:
         # Initialize stable pose
         self.reset_to_stable_pose()
 
-
     def reset_to_stable_pose(self):
         """Reset robot to a stable standing pose."""
         # Reset base position and orientation
@@ -101,6 +102,33 @@ class WalkingController:
                 force=self.max_force * 0.3,  # Further reduced force for gentler contact
                 maxVelocity=self.max_velocity * 0.03  # Even slower movement
             )
+
+        # Get contact points and forces
+        contact_points = p.getContactPoints(self.robot_id)
+        if contact_points:
+            print("\nContact point details:")
+            for i, point in enumerate(contact_points, 1):
+                pos_on_box = point[5]
+                pos_on_ground = point[6]
+                contact_distance = point[8]
+                print(f"\nContact point {i} details:")
+                print(f"Position on box: [{pos_on_box[0]:.3f}, {pos_on_box[1]:.3f}, {pos_on_box[2]:.3f}]")
+                print(f"Position on ground: [{pos_on_ground[0]:.3f}, {pos_on_ground[1]:.3f}, {pos_on_ground[2]:.3f}]")
+                print(f"Contact distance: {contact_distance:.6f}")
+
+        # Get and print force analysis
+        left_force, right_force = self.analyzer.get_contact_forces()
+        total_force = left_force[2] + right_force[2]
+        force_vector = [left_force[0] + right_force[0],
+                       left_force[1] + right_force[1],
+                       total_force]
+        force_magnitude = np.sqrt(sum(f*f for f in force_vector))
+
+        print("\nForce Analysis:")
+        print(f"Total normal force: {total_force:.3f}N")
+        print(f"Total force vector: [{force_vector[0]:.3f}, {force_vector[1]:.3f}, {force_vector[2]:.3f}]N")
+        print(f"Force vector magnitude: {force_magnitude:.3f}N")
+        print(f"Expected force (mass * g): {9.81:.3f}N")
 
         # Iterative balance adjustment with force and COM feedback
         max_attempts = 100  # Reduced settling attempts
@@ -382,6 +410,35 @@ class WalkingController:
         print("\nInitializing stable pose...")
         self.reset_to_stable_pose()
 
+        # Get initial force analysis
+        left_force, right_force = self.analyzer.get_contact_forces()
+        total_force = left_force[2] + right_force[2]
+        force_vector = [left_force[0] + right_force[0],
+                       left_force[1] + right_force[1],
+                       total_force]
+        force_magnitude = np.sqrt(sum(f*f for f in force_vector))
+        expected_force = 9.81  # mass * g
+
+        # Print force analysis in required format
+        print("\nForce Analysis:")
+        print(f"Total normal force: {total_force:.3f}N")
+        print(f"Total force vector: [{force_vector[0]:.3f}, {force_vector[1]:.3f}, {force_vector[2]:.3f}]N")
+        print(f"Force vector magnitude: {force_magnitude:.3f}N")
+        print(f"Expected force (mass * g): {expected_force:.3f}N\n")
+
+        # Get and print contact point details
+        contact_points = p.getContactPoints(self.robot_id)
+        if contact_points:
+            print("Contact point details:")
+            for i, point in enumerate(contact_points, 1):
+                pos_on_box = point[5]
+                pos_on_ground = point[6]
+                contact_distance = point[8]
+                print(f"\nContact point {i} details:")
+                print(f"Position on box: [{pos_on_box[0]:.3f}, {pos_on_box[1]:.3f}, {pos_on_box[2]:.3f}]")
+                print(f"Position on ground: [{pos_on_ground[0]:.3f}, {pos_on_ground[1]:.3f}, {pos_on_ground[2]:.3f}]")
+                print(f"Contact distance: {contact_distance:.6f}")
+
         # Initialize phase tracking
         current_phase = "weight_balancing"  # phases: weight_balancing, transition, walking
         phase_start_time = time.time()
@@ -620,3 +677,47 @@ class WalkingController:
                 p.POSITION_CONTROL, targetPosition=new_left_ankle, force=applied_force)
             p.setJointMotorControl2(self.robot_id, self.right_ankle,
                 p.POSITION_CONTROL, targetPosition=new_right_ankle, force=applied_force)
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Bipedal Robot Walking Controller')
+    parser.add_argument('--gui', action='store_true', help='Enable GUI visualization')
+    args = parser.parse_args()
+
+    # Initialize PyBullet
+    if args.gui:
+        p.connect(p.GUI)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+    else:
+        p.connect(p.DIRECT)
+
+    # Set up simulation environment
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
+    p.setGravity(0, 0, -9.81)
+    p.setRealTimeSimulation(0)
+
+    try:
+        # Initialize force analyzer and walking controller
+        analyzer = ForceAnalyzer(connection_mode=p.GUI if args.gui else p.DIRECT)
+        controller = WalkingController(analyzer)
+
+        # Print initial force analysis
+        left_force, right_force = analyzer.get_contact_forces()
+        total_force = left_force[2] + right_force[2]
+        force_ratio = min(left_force[2], right_force[2]) / (total_force + 1e-6)
+
+        print("\nInitial Force Analysis:")
+        print(f"Left foot force: {left_force[2]:.2f}N")
+        print(f"Right foot force: {right_force[2]:.2f}N")
+        print(f"Total force: {total_force:.2f}N")
+        print(f"Force ratio: {force_ratio:.3f}")
+
+        # Start walking sequence
+        controller.start_walking()
+
+    except KeyboardInterrupt:
+        print("\nStopping simulation gracefully...")
+    finally:
+        p.disconnect()
+        print("Simulation ended.")
